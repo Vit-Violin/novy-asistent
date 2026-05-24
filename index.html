@@ -1,12 +1,864 @@
 <!DOCTYPE html>
-<html lang="cs">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nový asistent</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Studio Assistant</title>
+  <style>
+    :root{
+      --bg:#f4f1ea;
+      --panel:#fffdf8;
+      --panel-2:#f8f5ee;
+      --line:#d8d1c2;
+      --text:#2d2a26;
+      --muted:#6f6a63;
+      --accent:#1f6f78;
+      --accent-2:#164f55;
+      --danger:#a64242;
+      --success:#447a3e;
+      --shadow:0 10px 30px rgba(0,0,0,.08);
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Arial, Helvetica, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    header{
+      padding:20px;
+      background:var(--panel);
+      border-bottom:1px solid var(--line);
+      position:sticky;
+      top:0;
+      z-index:10;
+    }
+    .topbar{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+    }
+    h1{
+      margin:0;
+      font-size:28px;
+    }
+    .subtitle{
+      color:var(--muted);
+      font-size:14px;
+      margin-top:4px;
+    }
+    .actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    button, .file-label{
+      border:none;
+      background:var(--accent);
+      color:white;
+      padding:10px 14px;
+      border-radius:12px;
+      cursor:pointer;
+      font-size:14px;
+    }
+    button:hover, .file-label:hover{background:var(--accent-2)}
+    button.secondary{
+      background:#e7e0d1;
+      color:var(--text);
+    }
+    button.secondary:hover{background:#d9d0bf}
+    button.danger{
+      background:var(--danger);
+    }
+    button.success{
+      background:var(--success);
+    }
+    input, textarea, select{
+      width:100%;
+      padding:10px 12px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      background:white;
+      font-size:14px;
+    }
+    textarea{min-height:90px; resize:vertical}
+    .app{
+      display:grid;
+      grid-template-columns:320px 1fr;
+      gap:20px;
+      padding:20px;
+    }
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
+    .sidebar{
+      padding:16px;
+      align-self:start;
+      position:sticky;
+      top:110px;
+      max-height:calc(100vh - 130px);
+      overflow:auto;
+    }
+    .content{
+      padding:16px;
+    }
+    .section{
+      background:var(--panel-2);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:14px;
+      margin-bottom:16px;
+    }
+    .section h2, .section h3{
+      margin-top:0;
+    }
+    .row{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:12px;
+      margin-bottom:12px;
+    }
+    .row-3{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:12px;
+      margin-bottom:12px;
+    }
+    .student-list{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top:14px;
+    }
+    .student-card{
+      padding:12px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:white;
+      cursor:pointer;
+    }
+    .student-card.active{
+      border-color:var(--accent);
+      background:#eef7f8;
+    }
+    .student-card small{
+      color:var(--muted);
+      display:block;
+      margin-top:4px;
+    }
+    .student-top{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+    }
+    .badge{
+      display:inline-block;
+      padding:4px 8px;
+      border-radius:999px;
+      font-size:12px;
+      background:#e9f3f4;
+      color:var(--accent-2);
+      margin-right:6px;
+      margin-bottom:6px;
+    }
+    .item{
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:white;
+      padding:12px;
+      margin-bottom:10px;
+    }
+    .item-header{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:flex-start;
+      margin-bottom:8px;
+    }
+    .muted{color:var(--muted)}
+    .empty{
+      color:var(--muted);
+      font-style:italic;
+      padding:10px 0;
+    }
+    .hidden{display:none}
+    .toolbar{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-bottom:12px;
+    }
+    .tiny{
+      font-size:12px;
+      color:var(--muted);
+    }
+    .progress-grid{
+      display:grid;
+      grid-template-columns:repeat(5,1fr);
+      gap:10px;
+    }
+    .score-box{
+      background:white;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px;
+      text-align:center;
+    }
+    .score-box label{
+      display:block;
+      font-size:13px;
+      margin-bottom:6px;
+    }
+    #importFile{display:none}
+    .live-url{
+      font-size:13px;
+      color:var(--muted);
+      margin-top:6px;
+      word-break:break-all;
+    }
+    @media (max-width: 980px){
+      .app{grid-template-columns:1fr}
+      .sidebar{position:static; max-height:none}
+      .row,.row-3,.progress-grid{grid-template-columns:1fr}
+    }
+  </style>
 </head>
 <body>
-  <h1>Nový asistent</h1>
-  <p>Stránka funguje.</p>
+  <header>
+    <div class="topbar">
+      <div>
+        <h1>Studio Assistant</h1>
+        <div class="subtitle">Local student management app for violin or music teaching</div>
+        <div class="live-url">Live page: https://vit-violin.github.io/novy-asistent/</div>
+      </div>
+      <div class="actions">
+        <button onclick="addStudent()">Add Student</button>
+        <button class="secondary" onclick="exportData()">Export JSON</button>
+        <label class="file-label secondary" for="importFile">Import JSON</label>
+        <input id="importFile" type="file" accept=".json" onchange="importData(event)" />
+      </div>
+    </div>
+  </header>
+
+  <main class="app">
+    <aside class="panel sidebar">
+      <div class="section">
+        <h3>Search</h3>
+        <input id="searchInput" type="text" placeholder="Search students..." oninput="renderStudentsList()" />
+        <div class="toolbar" style="margin-top:10px">
+          <button class="secondary" onclick="setArchiveFilter('active')">Active</button>
+          <button class="secondary" onclick="setArchiveFilter('all')">All</button>
+          <button class="secondary" onclick="setArchiveFilter('archived')">Archived</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Students</h3>
+        <div id="studentList" class="student-list"></div>
+      </div>
+    </aside>
+
+    <section class="panel content">
+      <div id="noStudentView" class="section">
+        <h2>No student selected</h2>
+        <p>Create a student to begin building your studio records.</p>
+      </div>
+
+      <div id="studentView" class="hidden">
+        <div class="section">
+          <div class="item-header">
+            <div>
+              <h2 id="studentNameTitle">Student</h2>
+              <div id="studentMeta" class="muted"></div>
+            </div>
+            <div class="toolbar">
+              <button class="secondary" onclick="toggleArchiveStudent()">Archive / Unarchive</button>
+              <button class="danger" onclick="removeStudent()">Remove Student</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label>Full Name</label>
+              <input id="studentName" onchange="saveProfile()" />
+            </div>
+            <div>
+              <label>Date of Birth</label>
+              <input id="studentDob" type="date" onchange="saveProfile()" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label>Current Instrument</label>
+              <input id="studentInstrument" onchange="saveProfile()" />
+            </div>
+            <div>
+              <label>Level / Stage</label>
+              <input id="studentLevel" onchange="saveProfile()" placeholder="e.g. Beginner, Grade 3, Advanced" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label>Parent / Contact</label>
+              <input id="studentContact" onchange="saveProfile()" />
+            </div>
+            <div>
+              <label>General Notes</label>
+              <input id="studentGeneralNotes" onchange="saveProfile()" />
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="item-header">
+            <h3>Instrument History</h3>
+            <button onclick="addInstrumentHistory()">Add Entry</button>
+          </div>
+          <div class="row-3">
+            <div><input id="ihDate" type="date" /></div>
+            <div><input id="ihInstrument" placeholder="Instrument / size" /></div>
+            <div><input id="ihNotes" placeholder="Notes" /></div>
+          </div>
+          <div id="instrumentHistoryList"></div>
+        </div>
+
+        <div class="section">
+          <div class="item-header">
+            <h3>Lesson Log</h3>
+            <button onclick="addLesson()">Add Lesson</button>
+          </div>
+          <div class="row-3">
+            <div><input id="lessonDate" type="date" /></div>
+            <div><input id="lessonDuration" placeholder="Duration, e.g. 45 min" /></div>
+            <div>
+              <select id="lessonAttendance">
+                <option value="Present">Present</option>
+                <option value="Late">Late</option>
+                <option value="Absent">Absent</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div><textarea id="lessonFocus" placeholder="Lesson focus, notes, topics covered"></textarea></div>
+            <div><textarea id="lessonHomework" placeholder="Homework / practice goals"></textarea></div>
+          </div>
+          <div id="lessonList"></div>
+        </div>
+
+        <div class="section">
+          <div class="item-header">
+            <h3>Events</h3>
+            <button onclick="addEvent()">Add Event</button>
+          </div>
+          <div class="row-3">
+            <div><input id="eventDate" type="date" /></div>
+            <div>
+              <select id="eventType">
+                <option>Concert</option>
+                <option>Competition</option>
+                <option>Masterclass</option>
+                <option>Exam</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div><input id="eventTitle" placeholder="Event title" /></div>
+          </div>
+          <div class="row">
+            <div><input id="eventPieces" placeholder="Pieces played / studied" /></div>
+            <div><input id="eventResult" placeholder="Result / comments" /></div>
+          </div>
+          <div id="eventList"></div>
+        </div>
+
+        <div class="section">
+          <div class="item-header">
+            <h3>Repertoire History</h3>
+            <button onclick="addRepertoire()">Add Piece</button>
+          </div>
+          <div class="row-3">
+            <div><input id="repDate" type="date" /></div>
+            <div><input id="repComposer" placeholder="Composer" /></div>
+            <div><input id="repPiece" placeholder="Piece / movement" /></div>
+          </div>
+          <div class="row">
+            <div><input id="repStatus" placeholder="Status, e.g. performed, studied, in progress" /></div>
+            <div><input id="repNotes" placeholder="Notes" /></div>
+          </div>
+          <div id="repertoireList"></div>
+        </div>
+
+        <div class="section">
+          <h3>Progress Ratings</h3>
+          <div class="progress-grid">
+            <div class="score-box">
+              <label>Intonation</label>
+              <input id="ratingIntonation" type="number" min="1" max="5" onchange="saveRatings()" />
+            </div>
+            <div class="score-box">
+              <label>Rhythm</label>
+              <input id="ratingRhythm" type="number" min="1" max="5" onchange="saveRatings()" />
+            </div>
+            <div class="score-box">
+              <label>Posture</label>
+              <input id="ratingPosture" type="number" min="1" max="5" onchange="saveRatings()" />
+            </div>
+            <div class="score-box">
+              <label>Bow Control</label>
+              <input id="ratingBow" type="number" min="1" max="5" onchange="saveRatings()" />
+            </div>
+            <div class="score-box">
+              <label>Tone</label>
+              <input id="ratingTone" type="number" min="1" max="5" onchange="saveRatings()" />
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Teaching Recommendations</h3>
+          <div class="row">
+            <div>
+              <label>Teaching priorities</label>
+              <textarea id="teachingPriorities" onchange="saveRecommendations()" placeholder="Main problems to improve, technical goals, short-term teaching strategy"></textarea>
+            </div>
+            <div>
+              <label>Suggested materials and future repertoire</label>
+              <textarea id="futureMaterials" onchange="saveRecommendations()" placeholder="Etudes, methods, scales, pieces, duets, concert pieces, future goals"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "studio-assistant-data-v1";
+    let data = loadData();
+    let selectedStudentId = data.students[0]?.id || null;
+    let archiveFilter = "active";
+
+    function loadData(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        try { return JSON.parse(raw); }
+        catch(e){}
+      }
+      return { students: [] };
+    }
+
+    function persist(){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function uid(){
+      return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+    }
+
+    function getSelectedStudent(){
+      return data.students.find(s => s.id === selectedStudentId) || null;
+    }
+
+    function addStudent(){
+      const student = {
+        id: uid(),
+        archived: false,
+        name: "New Student",
+        dob: "",
+        instrument: "",
+        level: "",
+        contact: "",
+        generalNotes: "",
+        instrumentHistory: [],
+        lessons: [],
+        events: [],
+        repertoire: [],
+        ratings: {
+          intonation: "",
+          rhythm: "",
+          posture: "",
+          bow: "",
+          tone: ""
+        },
+        recommendations: {
+          priorities: "",
+          futureMaterials: ""
+        }
+      };
+      data.students.unshift(student);
+      selectedStudentId = student.id;
+      persist();
+      render();
+    }
+
+    function removeStudent(){
+      const student = getSelectedStudent();
+      if(!student) return;
+      if(!confirm(`Remove ${student.name}? This cannot be undone unless you exported your JSON backup.`)) return;
+      data.students = data.students.filter(s => s.id !== student.id);
+      selectedStudentId = data.students[0]?.id || null;
+      persist();
+      render();
+    }
+
+    function toggleArchiveStudent(){
+      const student = getSelectedStudent();
+      if(!student) return;
+      student.archived = !student.archived;
+      persist();
+      render();
+    }
+
+    function setArchiveFilter(value){
+      archiveFilter = value;
+      renderStudentsList();
+    }
+
+    function saveProfile(){
+      const s = getSelectedStudent();
+      if(!s) return;
+      s.name = document.getElementById("studentName").value.trim();
+      s.dob = document.getElementById("studentDob").value;
+      s.instrument = document.getElementById("studentInstrument").value.trim();
+      s.level = document.getElementById("studentLevel").value.trim();
+      s.contact = document.getElementById("studentContact").value.trim();
+      s.generalNotes = document.getElementById("studentGeneralNotes").value.trim();
+      persist();
+      renderStudentsList();
+      renderHeader();
+    }
+
+    function saveRatings(){
+      const s = getSelectedStudent();
+      if(!s) return;
+      s.ratings.intonation = document.getElementById("ratingIntonation").value;
+      s.ratings.rhythm = document.getElementById("ratingRhythm").value;
+      s.ratings.posture = document.getElementById("ratingPosture").value;
+      s.ratings.bow = document.getElementById("ratingBow").value;
+      s.ratings.tone = document.getElementById("ratingTone").value;
+      persist();
+    }
+
+    function saveRecommendations(){
+      const s = getSelectedStudent();
+      if(!s) return;
+      s.recommendations.priorities = document.getElementById("teachingPriorities").value;
+      s.recommendations.futureMaterials = document.getElementById("futureMaterials").value;
+      persist();
+    }
+
+    function addInstrumentHistory(){
+      const s = getSelectedStudent();
+      if(!s) return;
+      const date = document.getElementById("ihDate").value;
+      const instrument = document.getElementById("ihInstrument").value.trim();
+      const notes = document.getElementById("ihNotes").value.trim();
+      if(!instrument) return alert("Please enter instrument information.");
+      s.instrumentHistory.unshift({id:uid(), date, instrument, notes});
+      document.getElementById("ihDate").value = "";
+      document.getElementById("ihInstrument").value = "";
+      document.getElementById("ihNotes").value = "";
+      persist();
+      renderInstrumentHistory();
+    }
+
+    function addLesson(){
+      const s = getSelectedStudent();
+      if(!s) return;
+      const date = document.getElementById("lessonDate").value;
+      const duration = document.getElementById("lessonDuration").value.trim();
+      const attendance = document.getElementById("lessonAttendance").value;
+      const focus = document.getElementById("lessonFocus").value.trim();
+      const homework = document.getElementById("lessonHomework").value.trim();
+      if(!date && !focus && !homework) return alert("Please enter at least a lesson date or notes.");
+      s.lessons.push({id:uid(), date, duration, attendance, focus, homework});
+      s.lessons.sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"));
+      document.getElementById("lessonDate").value = "";
+      document.getElementById("lessonDuration").value = "";
+      document.getElementById("lessonAttendance").value = "Present";
+      document.getElementById("lessonFocus").value = "";
+      document.getElementById("lessonHomework").value = "";
+      persist();
+      renderLessons();
+    }
+
+    function addEvent(){
+      const s = getSelectedStudent();
+      if(!s) return;
+      const date = document.getElementById("eventDate").value;
+      const type = document.getElementById("eventType").value;
+      const title = document.getElementById("eventTitle").value.trim();
+      const pieces = document.getElementById("eventPieces").value.trim();
+      const result = document.getElementById("eventResult").value.trim();
+      if(!title && !date) return alert("Please enter at least event title or date.");
+      s.events.push({id:uid(), date, type, title, pieces, result});
+      s.events.sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"));
+      document.getElementById("eventDate").value = "";
+      document.getElementById("eventType").value = "Concert";
+      document.getElementById("eventTitle").value = "";
+      document.getElementById("eventPieces").value = "";
+      document.getElementById("eventResult").value = "";
+      persist();
+      renderEvents();
+    }
+
+    function addRepertoire(){
+      const s = getSelectedStudent();
+      if(!s) return;
+      const date = document.getElementById("repDate").value;
+      const composer = document.getElementById("repComposer").value.trim();
+      const piece = document.getElementById("repPiece").value.trim();
+      const status = document.getElementById("repStatus").value.trim();
+      const notes = document.getElementById("repNotes").value.trim();
+      if(!piece) return alert("Please enter a piece title.");
+      s.repertoire.push({id:uid(), date, composer, piece, status, notes});
+      s.repertoire.sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"));
+      document.getElementById("repDate").value = "";
+      document.getElementById("repComposer").value = "";
+      document.getElementById("repPiece").value = "";
+      document.getElementById("repStatus").value = "";
+      document.getElementById("repNotes").value = "";
+      persist();
+      renderRepertoire();
+    }
+
+    function deleteItem(collectionName, id){
+      const s = getSelectedStudent();
+      if(!s) return;
+      s[collectionName] = s[collectionName].filter(item => item.id !== id);
+      persist();
+      render();
+    }
+
+    function exportData(){
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], {type: "application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "studio-assistant-data.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importData(event){
+      const file = event.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e){
+        try{
+          const imported = JSON.parse(e.target.result);
+          if(!imported.students || !Array.isArray(imported.students)){
+            alert("Invalid JSON structure.");
+            return;
+          }
+          data = imported;
+          selectedStudentId = data.students[0]?.id || null;
+          persist();
+          render();
+          alert("Import successful.");
+        }catch(err){
+          alert("Import failed. Please use a valid JSON export file.");
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = "";
+    }
+
+    function renderStudentsList(){
+      const list = document.getElementById("studentList");
+      const query = document.getElementById("searchInput").value.toLowerCase().trim();
+      let students = [...data.students];
+
+      if(archiveFilter === "active") students = students.filter(s => !s.archived);
+      if(archiveFilter === "archived") students = students.filter(s => s.archived);
+
+      if(query){
+        students = students.filter(s =>
+          (s.name || "").toLowerCase().includes(query) ||
+          (s.instrument || "").toLowerCase().includes(query) ||
+          (s.level || "").toLowerCase().includes(query)
+        );
+      }
+
+      if(!students.length){
+        list.innerHTML = `<div class="empty">No students found.</div>`;
+        return;
+      }
+
+      list.innerHTML = students.map(s => `
+        <div class="student-card ${s.id === selectedStudentId ? 'active' : ''}" onclick="selectStudent('${s.id}')">
+          <div class="student-top">
+            <strong>${escapeHtml(s.name || 'Unnamed student')}</strong>
+            ${s.archived ? '<span class="badge">Archived</span>' : ''}
+          </div>
+          <small>${escapeHtml(s.instrument || 'No instrument')} ${s.level ? '• ' + escapeHtml(s.level) : ''}</small>
+        </div>
+      `).join("");
+    }
+
+    function selectStudent(id){
+      selectedStudentId = id;
+      render();
+    }
+
+    function renderHeader(){
+      const s = getSelectedStudent();
+      if(!s) return;
+      document.getElementById("studentNameTitle").textContent = s.name || "Unnamed Student";
+      const meta = [
+        s.instrument || "No instrument set",
+        s.level || "No level",
+        s.archived ? "Archived" : "Active"
+      ].join(" • ");
+      document.getElementById("studentMeta").textContent = meta;
+    }
+
+    function renderInstrumentHistory(){
+      const s = getSelectedStudent();
+      const box = document.getElementById("instrumentHistoryList");
+      if(!s || !s.instrumentHistory.length){
+        box.innerHTML = `<div class="empty">No instrument history yet.</div>`;
+        return;
+      }
+      box.innerHTML = s.instrumentHistory
+        .sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"))
+        .map(item => `
+          <div class="item">
+            <div class="item-header">
+              <div>
+                <strong>${escapeHtml(item.instrument)}</strong>
+                <div class="tiny">${escapeHtml(item.date || 'No date')}</div>
+              </div>
+              <button class="danger" onclick="deleteItem('instrumentHistory','${item.id}')">Delete</button>
+            </div>
+            <div>${escapeHtml(item.notes || '')}</div>
+          </div>
+        `).join("");
+    }
+
+    function renderLessons(){
+      const s = getSelectedStudent();
+      const box = document.getElementById("lessonList");
+      if(!s || !s.lessons.length){
+        box.innerHTML = `<div class="empty">No lessons yet.</div>`;
+        return;
+      }
+      box.innerHTML = s.lessons
+        .sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"))
+        .map(item => `
+          <div class="item">
+            <div class="item-header">
+              <div>
+                <strong>${escapeHtml(item.date || 'No date')}</strong>
+                <div class="tiny">${escapeHtml(item.duration || '')} ${item.attendance ? '• ' + escapeHtml(item.attendance) : ''}</div>
+              </div>
+              <button class="danger" onclick="deleteItem('lessons','${item.id}')">Delete</button>
+            </div>
+            <div><strong>Focus:</strong> ${escapeHtml(item.focus || '-')}</div>
+            <div><strong>Homework:</strong> ${escapeHtml(item.homework || '-')}</div>
+          </div>
+        `).join("");
+    }
+
+    function renderEvents(){
+      const s = getSelectedStudent();
+      const box = document.getElementById("eventList");
+      if(!s || !s.events.length){
+        box.innerHTML = `<div class="empty">No events yet.</div>`;
+        return;
+      }
+      box.innerHTML = s.events
+        .sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"))
+        .map(item => `
+          <div class="item">
+            <div class="item-header">
+              <div>
+                <strong>${escapeHtml(item.title || 'Untitled event')}</strong>
+                <div class="tiny">${escapeHtml(item.type || '')} ${item.date ? '• ' + escapeHtml(item.date) : ''}</div>
+              </div>
+              <button class="danger" onclick="deleteItem('events','${item.id}')">Delete</button>
+            </div>
+            <div><strong>Pieces:</strong> ${escapeHtml(item.pieces || '-')}</div>
+            <div><strong>Result / comments:</strong> ${escapeHtml(item.result || '-')}</div>
+          </div>
+        `).join("");
+    }
+
+    function renderRepertoire(){
+      const s = getSelectedStudent();
+      const box = document.getElementById("repertoireList");
+      if(!s || !s.repertoire.length){
+        box.innerHTML = `<div class="empty">No repertoire yet.</div>`;
+        return;
+      }
+      box.innerHTML = s.repertoire
+        .sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"))
+        .map(item => `
+          <div class="item">
+            <div class="item-header">
+              <div>
+                <strong>${escapeHtml(item.piece || '')}</strong>
+                <div class="tiny">${escapeHtml(item.composer || '')} ${item.date ? '• ' + escapeHtml(item.date) : ''}</div>
+              </div>
+              <button class="danger" onclick="deleteItem('repertoire','${item.id}')">Delete</button>
+            </div>
+            <div><strong>Status:</strong> ${escapeHtml(item.status || '-')}</div>
+            <div><strong>Notes:</strong> ${escapeHtml(item.notes || '-')}</div>
+          </div>
+        `).join("");
+    }
+
+    function fillStudentForm(){
+      const s = getSelectedStudent();
+      if(!s) return;
+      document.getElementById("studentName").value = s.name || "";
+      document.getElementById("studentDob").value = s.dob || "";
+      document.getElementById("studentInstrument").value = s.instrument || "";
+      document.getElementById("studentLevel").value = s.level || "";
+      document.getElementById("studentContact").value = s.contact || "";
+      document.getElementById("studentGeneralNotes").value = s.generalNotes || "";
+      document.getElementById("ratingIntonation").value = s.ratings?.intonation || "";
+      document.getElementById("ratingRhythm").value = s.ratings?.rhythm || "";
+      document.getElementById("ratingPosture").value = s.ratings?.posture || "";
+      document.getElementById("ratingBow").value = s.ratings?.bow || "";
+      document.getElementById("ratingTone").value = s.ratings?.tone || "";
+      document.getElementById("teachingPriorities").value = s.recommendations?.priorities || "";
+      document.getElementById("futureMaterials").value = s.recommendations?.futureMaterials || "";
+    }
+
+    function escapeHtml(value){
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function render(){
+      renderStudentsList();
+      const s = getSelectedStudent();
+      document.getElementById("noStudentView").classList.toggle("hidden", !!s);
+      document.getElementById("studentView").classList.toggle("hidden", !s);
+      if(!s) return;
+      renderHeader();
+      fillStudentForm();
+      renderInstrumentHistory();
+      renderLessons();
+      renderEvents();
+      renderRepertoire();
+    }
+
+    render();
+  </script>
 </body>
 </html>
