@@ -860,5 +860,18 @@
 
     render();
   </script>
-</body>
+<script>  
+  async function exportReportPdf(){
+        const { jsPDF } = window.jspdf;
+        const report = document.getElementById('reportContent');
+        if (!report) return;
+        const canvas = await html2canvas(report, { scale: 2, useCORS: true });
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = 210;
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save('report.pdf');
+  }
+  </script>
 </html>
