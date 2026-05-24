@@ -874,7 +874,7 @@
         const pdfWidth = 210;
     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
     pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save('report.pdf');
+    window.open(pdf.output('bloburl'), '_blank');
   }
   </script>
   </body>
