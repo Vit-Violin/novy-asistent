@@ -865,7 +865,7 @@
   </script>
 <script>  
   async function exportReportPdf(){
-    const previewWindow = window.open('', '_blank');
+    
     const { jsPDF } = window.jspdf;
         const report = document.getElementById('reportContent');
         if (!report) return;
@@ -875,7 +875,7 @@
         const pdfWidth = 210;
     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
     pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    previewWindow.location = pdf.output('bloburl');
+   window.location.href = pdf.output('datauristring');
   }
   </script>
   </body>
