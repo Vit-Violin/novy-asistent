@@ -595,19 +595,41 @@ function migrateData(appData) {
     }).filter(Boolean);
 
     // Migrace historie nástroje.
-    const instrumentHistory = (Array.isArray(student.instrumentHistory) ? student.instrumentHistory : []).map(entry => {
-      if (!entry || typeof entry !== "object") {
-        return null;
-      }
+// Starší JSON může mít pole changed/name/note/size/type.
+// Nová aplikace používá date/instrument/notes.
+const instrumentHistory = (Array.isArray(student.instrumentHistory) ? student.instrumentHistory : []).map(entry => {
+  if (!entry || typeof entry !== "object") {
+    return null;
+  }
 
-      return {
-        id: entry.id != null ? String(entry.id) : uid(),
-        date: entry.date || "",
-        instrument: entry.instrument || "",
-        notes: entry.notes || entry.note || ""
-      };
-    }).filter(Boolean);
+  const date = entry.date || entry.changed || "";
 
+  const instrumentParts = [
+    entry.instrument,
+    entry.type,
+    entry.name,
+    entry.size
+  ].filter(Boolean);
+
+  const instrument = instrumentParts.join(" ").trim();
+
+  const notes = entry.notes || entry.note || "";
+
+  return {
+    id: entry.id != null ? String(entry.id) : uid(),
+    date: date,
+    instrument: instrument,
+    notes: notes,
+
+    // Zachováme i stará pole, aby nedošlo ke ztrátě dat.
+    changed: entry.changed || date,
+    name: entry.name || "",
+    size: entry.size || "",
+    type: entry.type || "",
+    note: entry.note || notes
+  };
+}).filter(Boolean);
+    
     return {
       // Číselná id studentů převedeme na text,
       // aby fungovalo přepínání studentů.
@@ -616,7 +638,7 @@ function migrateData(appData) {
       archived: student.archived ?? false,
       name: student.name || "Unnamed Student",
       dob: student.dob || "",
-      instrument: student.instrument || "",
+      instrument: student.instrument || instrumentHistory[0]?.instrument || "",
       level: student.level || "",
       contact: student.contact || "",
       generalNotes: student.generalNotes || "",
