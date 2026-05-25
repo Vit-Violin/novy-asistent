@@ -769,6 +769,17 @@ function persist(){
       persist();
     }
 
+    function resetAllEditStates(){
+  editingInstrumentHistoryId = null;
+  editingLessonId = null;
+  editingEventId = null;
+  editingRepertoireId = null;
+
+  resetInstrumentHistoryFormUI();
+  resetLessonFormUI();
+  resetEventFormUI();
+  resetRepertoireFormUI();
+}
     function addInstrumentHistory(){
   const s = getSelectedStudent();
   if(!s) return;
@@ -974,25 +985,102 @@ function resetLessonFormUI(){
 }
     
     function addEvent(){
-      const s = getSelectedStudent();
-      if(!s) return;
-      const date = document.getElementById("eventDate").value;
-      const type = document.getElementById("eventType").value;
-      const title = document.getElementById("eventTitle").value.trim();
-      const pieces = document.getElementById("eventPieces").value.trim();
-      const result = document.getElementById("eventResult").value.trim();
-      if(!title && !date) return alert("Please enter at least event title or date.");
-      s.events.push({id:uid(), date, type, title, pieces, result});
-      s.events.sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"));
-      document.getElementById("eventDate").value = "";
-      document.getElementById("eventType").value = "Concert";
-      document.getElementById("eventTitle").value = "";
-      document.getElementById("eventPieces").value = "";
-      document.getElementById("eventResult").value = "";
-      persist();
-      renderEvents();
+  const s = getSelectedStudent();
+  if(!s) return;
+
+  const date = document.getElementById("eventDate").value;
+  const type = document.getElementById("eventType").value;
+  const title = document.getElementById("eventTitle").value.trim();
+  const pieces = document.getElementById("eventPieces").value.trim();
+  const result = document.getElementById("eventResult").value.trim();
+
+  if(!title && !date) return alert("Please enter at least event title or date.");
+
+  if(editingEventId){
+    // Režim úpravy: najdeme existující událost a přepíšeme ji.
+    const item = s.events.find(x => String(x.id) === String(editingEventId));
+
+    if(item){
+      item.date = date;
+      item.type = type;
+      item.title = title;
+      item.pieces = pieces;
+      item.result = result;
     }
 
+    editingEventId = null;
+  } else {
+    // Režim vytvoření: přidáme novou událost.
+    s.events.push({
+      id: uid(),
+      date,
+      type,
+      title,
+      pieces,
+      result
+    });
+  }
+
+  s.events.sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"));
+
+  clearEventForm();
+  resetEventFormUI();
+
+  persist();
+  renderEvents();
+}
+
+function editEvent(id){
+  const s = getSelectedStudent();
+  if(!s) return;
+
+  const item = s.events.find(x => String(x.id) === String(id));
+  if(!item) return;
+
+  // Zrušíme případnou editaci v ostatních sekcích.
+  resetAllEditStates();
+
+  // Předvyplníme formulář hodnotami z existující události.
+  document.getElementById("eventDate").value = item.date || "";
+  document.getElementById("eventType").value = item.type || "Concert";
+  document.getElementById("eventTitle").value = item.title || "";
+  document.getElementById("eventPieces").value = item.pieces || "";
+  document.getElementById("eventResult").value = item.result || "";
+
+  // Zapneme editační režim pro Events.
+  editingEventId = String(id);
+
+  const addBtn = document.getElementById("eventAddBtn");
+  if(addBtn) addBtn.textContent = "Save Event";
+
+  const cancelBtn = document.getElementById("eventCancelBtn");
+  if(cancelBtn) cancelBtn.style.display = "";
+
+  document.getElementById("eventDate").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function cancelEditEvent(){
+  editingEventId = null;
+  clearEventForm();
+  resetEventFormUI();
+}
+
+function clearEventForm(){
+  document.getElementById("eventDate").value = "";
+  document.getElementById("eventType").value = "Concert";
+  document.getElementById("eventTitle").value = "";
+  document.getElementById("eventPieces").value = "";
+  document.getElementById("eventResult").value = "";
+}
+
+function resetEventFormUI(){
+  const addBtn = document.getElementById("eventAddBtn");
+  const cancelBtn = document.getElementById("eventCancelBtn");
+
+  if(addBtn) addBtn.textContent = "Add Event";
+  if(cancelBtn) cancelBtn.style.display = "none";
+}
+    
     function addRepertoire(){
   const s = getSelectedStudent();
   if(!s) return;
@@ -1193,14 +1281,9 @@ function resetRepertoireFormUI(){
       `).join("");
     }
 
-    function selectStudent(id){
-  // Při přepnutí studenta zrušíme případnou rozpracovanou editaci,
-  // aby se změny omylem neukládaly do jiného studenta.
-  editingLessonId = null;
-  editingRepertoireId = null;
-
-  resetLessonFormUI();
-  resetRepertoireFormUI();
+   function selectStudent(id){
+  // Při přepnutí studenta zrušíme všechny rozpracované editace.
+  resetAllEditStates();
 
   selectedStudentId = String(id);
   render();
@@ -1280,29 +1363,34 @@ function resetRepertoireFormUI(){
 }
     
     function renderEvents(){
-      const s = getSelectedStudent();
-      const box = document.getElementById("eventList");
-      if(!s || !s.events.length){
-        box.innerHTML = `<div class="empty">No events yet.</div>`;
-        return;
-      }
-      box.innerHTML = s.events
-        .sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"))
-        .map(item => `
-          <div class="item">
-            <div class="item-header">
-              <div>
-                <strong>${escapeHtml(item.title || 'Untitled event')}</strong>
-                <div class="tiny">${escapeHtml(item.type || '')} ${item.date ? '• ' + escapeHtml(item.date) : ''}</div>
-              </div>
-              <button class="danger" onclick="deleteItem('events','${item.id}')">Delete</button>
-            </div>
-            <div><strong>Pieces:</strong> ${escapeHtml(item.pieces || '-')}</div>
-            <div><strong>Result / comments:</strong> ${escapeHtml(item.result || '-')}</div>
-          </div>
-        `).join("");
-    }
+  const s = getSelectedStudent();
+  const box = document.getElementById("eventList");
 
+  if(!s || !s.events || !s.events.length){
+    box.innerHTML = `<div class="empty">No events yet.</div>`;
+    return;
+  }
+
+  box.innerHTML = s.events
+    .sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"))
+    .map(item => `
+      <div class="item">
+        <div class="item-header">
+          <div>
+            <strong>${escapeHtml(item.title || "Untitled event")}</strong>
+            <div class="tiny">${escapeHtml(item.type || "")} ${item.date ? "• " + escapeHtml(item.date) : ""}</div>
+          </div>
+          <div>
+            <button onclick="editEvent('${item.id}')">Edit</button>
+            <button class="danger" onclick="deleteItem('events','${item.id}')">Delete</button>
+          </div>
+        </div>
+        ${item.pieces ? `<div><strong>Pieces:</strong> ${escapeHtml(item.pieces)}</div>` : ""}
+        ${item.result ? `<div><strong>Result / comments:</strong> ${escapeHtml(item.result)}</div>` : ""}
+      </div>
+    `).join("");
+}
+    
    function renderRepertoire(){
   const s = getSelectedStudent();
   const box = document.getElementById("repertoireList");
