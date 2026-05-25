@@ -325,9 +325,10 @@
 
         <div class="section">
           <div class="item-header">
-            <h3>Instrument History</h3>
-            <button onclick="addInstrumentHistory()">Add Entry</button>
-          </div>
+  <h3>Instrument History</h3>
+  <button id="ihAddBtn" onclick="addInstrumentHistory()">Add Entry</button>
+  <button id="ihCancelBtn" onclick="cancelEditInstrumentHistory()" style="display:none">Cancel</button>
+</div>
           <div class="row-3">
             <div><input id="ihDate" type="date" /></div>
             <div><input id="ihInstrument" placeholder="Instrument / size" /></div>
@@ -372,9 +373,10 @@
 
         <div class="section">
           <div class="item-header">
-            <h3>Events</h3>
-            <button onclick="addEvent()">Add Event</button>
-          </div>
+  <h3>Events</h3>
+  <button id="eventAddBtn" onclick="addEvent()">Add Event</button>
+  <button id="eventCancelBtn" onclick="cancelEditEvent()" style="display:none">Cancel</button>
+</div>
           <div class="row-3">
             <div><input id="eventDate" type="date" /></div>
             <div>
@@ -486,6 +488,9 @@ let archiveFilter = "active";
 // id znamená, že formulář upravuje existující záznam.
 let editingLessonId = null;
 let editingRepertoireId = null;
+    // null = vytváří nový záznam, id = upravuje existující záznam.
+let editingInstrumentHistoryId = null;
+let editingEventId = null;
     function loadData(){
   const raw = localStorage.getItem(STORAGE_KEY);
   if(raw){
@@ -743,20 +748,94 @@ function persist(){
     }
 
     function addInstrumentHistory(){
-      const s = getSelectedStudent();
-      if(!s) return;
-      const date = document.getElementById("ihDate").value;
-      const instrument = document.getElementById("ihInstrument").value.trim();
-      const notes = document.getElementById("ihNotes").value.trim();
-      if(!instrument) return alert("Please enter instrument information.");
-      s.instrumentHistory.unshift({id:uid(), date, instrument, notes});
-      document.getElementById("ihDate").value = "";
-      document.getElementById("ihInstrument").value = "";
-      document.getElementById("ihNotes").value = "";
-      persist();
-      renderInstrumentHistory();
+  const s = getSelectedStudent();
+  if(!s) return;
+
+  const date = document.getElementById("ihDate").value;
+  const instrument = document.getElementById("ihInstrument").value.trim();
+  const notes = document.getElementById("ihNotes").value.trim();
+
+  if(!instrument) return alert("Please enter instrument information.");
+
+  if(editingInstrumentHistoryId){
+    // Režim úpravy: najdeme existující záznam a přepíšeme ho.
+    const entry = s.instrumentHistory.find(e => String(e.id) === String(editingInstrumentHistoryId));
+
+    if(entry){
+      entry.date = date;
+      entry.instrument = instrument;
+      entry.notes = notes;
     }
 
+    editingInstrumentHistoryId = null;
+  } else {
+    // Režim vytvoření: přidáme nový záznam.
+    s.instrumentHistory.unshift({
+      id: uid(),
+      date,
+      instrument,
+      notes
+    });
+  }
+
+  clearInstrumentHistoryForm();
+  resetInstrumentHistoryFormUI();
+
+  persist();
+  renderInstrumentHistory();
+}
+    function editInstrumentHistory(id){
+  const s = getSelectedStudent();
+  if(!s) return;
+
+  const entry = s.instrumentHistory.find(e => String(e.id) === String(id));
+  if(!entry) return;
+
+  // Předvyplníme formulář hodnotami z existujícího záznamu.
+  document.getElementById("ihDate").value = entry.date || "";
+  document.getElementById("ihInstrument").value = entry.instrument || "";
+  document.getElementById("ihNotes").value = entry.notes || "";
+
+  // Zapneme editační režim.
+  editingInstrumentHistoryId = String(id);
+
+  // Zrušíme případnou editaci v ostatních sekcích.
+  editingLessonId = null;
+  editingRepertoireId = null;
+  editingEventId = null;
+
+  resetLessonFormUI();
+  resetRepertoireFormUI();
+  resetEventFormUI();
+
+  const addBtn = document.getElementById("ihAddBtn");
+  if(addBtn) addBtn.textContent = "Save Entry";
+
+  const cancelBtn = document.getElementById("ihCancelBtn");
+  if(cancelBtn) cancelBtn.style.display = "";
+
+  document.getElementById("ihDate").scrollIntoView({behavior:"smooth", block:"center"});
+}
+
+function cancelEditInstrumentHistory(){
+  editingInstrumentHistoryId = null;
+  clearInstrumentHistoryForm();
+  resetInstrumentHistoryFormUI();
+}
+
+function clearInstrumentHistoryForm(){
+  document.getElementById("ihDate").value = "";
+  document.getElementById("ihInstrument").value = "";
+  document.getElementById("ihNotes").value = "";
+}
+
+function resetInstrumentHistoryFormUI(){
+  const addBtn = document.getElementById("ihAddBtn");
+  if(addBtn) addBtn.textContent = "Add Entry";
+
+  const cancelBtn = document.getElementById("ihCancelBtn");
+  if(cancelBtn) cancelBtn.style.display = "none";
+}
     function addLesson(){
   const s = getSelectedStudent();
   if(!s) return;
@@ -1118,28 +1197,33 @@ function resetRepertoireFormUI(){
     }
 
     function renderInstrumentHistory(){
-      const s = getSelectedStudent();
-      const box = document.getElementById("instrumentHistoryList");
-      if(!s || !s.instrumentHistory.length){
-        box.innerHTML = `<div class="empty">No instrument history yet.</div>`;
-        return;
-      }
-      box.innerHTML = s.instrumentHistory
-        .sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"))
-        .map(item => `
-          <div class="item">
-            <div class="item-header">
-              <div>
-                <strong>${escapeHtml(item.instrument)}</strong>
-                <div class="tiny">${escapeHtml(item.date || 'No date')}</div>
-              </div>
-              <button class="danger" onclick="deleteItem('instrumentHistory','${item.id}')">Delete</button>
-            </div>
-            <div>${escapeHtml(item.notes || '')}</div>
-          </div>
-        `).join("");
-    }
+  const s = getSelectedStudent();
+  const box = document.getElementById("instrumentHistoryList");
 
+  if(!s || !s.instrumentHistory || !s.instrumentHistory.length){
+    box.innerHTML = `<div class="empty">No instrument history yet.</div>`;
+    return;
+  }
+
+  box.innerHTML = s.instrumentHistory
+    .sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"))
+    .map(item => `
+      <div class="item">
+        <div class="item-header">
+          <div>
+            <strong>${escapeHtml(item.instrument || "Instrument")}</strong>
+            <div class="tiny">${escapeHtml(item.date || "No date")}</div>
+          </div>
+          <div>
+            <button onclick="editInstrumentHistory('${item.id}')">Edit</button>
+            <button class="danger" onclick="deleteItem('instrumentHistory','${item.id}')">Delete</button>
+          </div>
+        </div>
+        ${item.notes ? `<div>${escapeHtml(item.notes)}</div>` : ''}
+      </div>
+    `).join("");
+}
+    
     function renderLessons(){
   const s = getSelectedStudent();
   const box = document.getElementById("lessonList");
