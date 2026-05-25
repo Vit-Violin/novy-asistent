@@ -395,22 +395,29 @@
         </div>
 
         <div class="section">
-          <div class="item-header">
-            <h3>Repertoire History</h3>
-            <button onclick="addRepertoire()">Add Piece</button>
-          </div>
-          <div class="row-3">
-            <div><input id="repDate" type="date" /></div>
-            <div><input id="repComposer" placeholder="Composer" /></div>
-            <div><input id="repPiece" placeholder="Piece / movement" /></div>
-          </div>
-          <div class="row">
-            <div><input id="repStatus" placeholder="Status, e.g. performed, studied, in progress" /></div>
-            <div><input id="repNotes" placeholder="Notes" /></div>
-          </div>
-          <div id="repertoireList"></div>
-        </div>
+  <div class="item-header">
+    <h3>Repertoire History</h3>
+    <button onclick="addRepertoire()">Add Piece</button>
+  </div>
 
+  <!-- Nový formulář používá pole kompatibilní se starším JSON:
+       title, composer, type, status, note.
+       Pole piece a notes se doplní v JavaScriptu jako aliasy kvůli kompatibilitě. -->
+  <div class="row-3">
+    <div><input id="repDate" type="date" /></div>
+    <div><input id="repTitle" placeholder="Title / piece" /></div>
+    <div><input id="repComposer" placeholder="Composer" /></div>
+  </div>
+
+  <div class="row-3">
+    <div><input id="repType" placeholder="Type, e.g. Piece, Etude, Scale" /></div>
+    <div><input id="repStatus" placeholder="Status, e.g. planned, studied, performed" /></div>
+    <div><input id="repNote" placeholder="Note" /></div>
+  </div>
+
+  <div id="repertoireList"></div>
+</div>
+        
         <div class="section">
           <h3>Progress Ratings</h3>
           <div class="progress-grid">
@@ -811,25 +818,50 @@ function persist(){
     }
 
     function addRepertoire(){
-      const s = getSelectedStudent();
-      if(!s) return;
-      const date = document.getElementById("repDate").value;
-      const composer = document.getElementById("repComposer").value.trim();
-      const piece = document.getElementById("repPiece").value.trim();
-      const status = document.getElementById("repStatus").value.trim();
-      const notes = document.getElementById("repNotes").value.trim();
-      if(!piece) return alert("Please enter a piece title.");
-      s.repertoire.push({id:uid(), date, composer, piece, status, notes});
-      s.repertoire.sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"));
-      document.getElementById("repDate").value = "";
-      document.getElementById("repComposer").value = "";
-      document.getElementById("repPiece").value = "";
-      document.getElementById("repStatus").value = "";
-      document.getElementById("repNotes").value = "";
-      persist();
-      renderRepertoire();
-    }
+  const s = getSelectedStudent();
+  if(!s) return;
 
+  const date = document.getElementById("repDate").value;
+  const title = document.getElementById("repTitle").value.trim();
+  const composer = document.getElementById("repComposer").value.trim();
+  const type = document.getElementById("repType").value.trim();
+  const status = document.getElementById("repStatus").value.trim();
+  const note = document.getElementById("repNote").value.trim();
+
+  // Stačí zadat alespoň název, skladatele, typ nebo poznámku.
+  if(!title && !composer && !type && !status && !note) {
+    return alert("Please enter at least a title, composer, type, status, or note.");
+  }
+
+  s.repertoire.push({
+    id: uid(),
+    date,
+
+    // Hlavní struktura kompatibilní se starším JSON.
+    title,
+    composer,
+    type,
+    status,
+    note,
+
+    // Alias pro novější části aplikace, které dříve používaly piece/notes.
+    piece: title,
+    notes: note
+  });
+
+  s.repertoire.sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"));
+
+  document.getElementById("repDate").value = "";
+  document.getElementById("repTitle").value = "";
+  document.getElementById("repComposer").value = "";
+  document.getElementById("repType").value = "";
+  document.getElementById("repStatus").value = "";
+  document.getElementById("repNote").value = "";
+
+  persist();
+  renderRepertoire();
+}
+    
     function deleteItem(collectionName, id){
       const s = getSelectedStudent();
       if(!s) return;
@@ -1013,7 +1045,7 @@ function persist(){
         `).join("");
     }
 
-    function renderRepertoire(){
+   function renderRepertoire(){
   const s = getSelectedStudent();
   const box = document.getElementById("repertoireList");
 
@@ -1024,24 +1056,33 @@ function persist(){
 
   box.innerHTML = s.repertoire
     .sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"))
-    .map(item => `
-      <div class="item">
-        <div class="item-header">
-          <div>
-            <strong>${escapeHtml(item.piece || item.title || 'Untitled piece')}</strong>
-            <div class="tiny">
-              ${escapeHtml(item.composer || item.type || '')}
-              ${item.date ? ' • ' + escapeHtml(item.date) : ''}
-            </div>
-          </div>
-          <button class="danger" onclick="deleteItem('repertoire','${item.id}')">Delete</button>
-        </div>
+    .map(item => {
+      // Kompatibilita:
+      // starší JSON používá title/type/note,
+      // novější části aplikace mohly používat piece/notes.
+      const title = item.title || item.piece || "Untitled piece";
+      const composer = item.composer || "";
+      const type = item.type || "";
+      const status = item.status || "";
+      const note = item.note || item.notes || "";
 
-        ${item.status ? `<div><strong>Status:</strong> ${escapeHtml(item.status)}</div>` : ''}
-        ${item.notes ? `<div><strong>Notes:</strong> ${escapeHtml(item.notes)}</div>` : ''}
-        ${item.note ? `<div><strong>Note:</strong> ${escapeHtml(item.note)}</div>` : ''}
-      </div>
-    `).join("");
+      return `
+        <div class="item">
+          <div class="item-header">
+            <div>
+              <strong>${escapeHtml(title)}</strong>
+              <div class="tiny">
+                ${escapeHtml([composer, type, item.date].filter(Boolean).join(" • "))}
+              </div>
+            </div>
+            <button class="danger" onclick="deleteItem('repertoire','${item.id}')">Delete</button>
+          </div>
+
+          ${status ? `<div><strong>Status:</strong> ${escapeHtml(status)}</div>` : ''}
+          ${note ? `<div><strong>Note:</strong> ${escapeHtml(note)}</div>` : ''}
+        </div>
+      `;
+    }).join("");
 }
     
     function fillStudentForm(){
