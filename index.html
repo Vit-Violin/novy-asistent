@@ -468,10 +468,9 @@
       return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
     }
 
-    function getSelectedStudent(){
-      return data.students.find(s => s.id === selectedStudentId) || null;
-    }
-
+   function getSelectedStudent(){
+  return data.students.find(s => String(s.id) === String(selectedStudentId)) || null;
+}
     function addStudent(){
       const student = {
         id: uid(),
@@ -698,13 +697,13 @@
         );
       }
 
-      if(!students.length){
+         if(!students.length){
         list.innerHTML = `<div class="empty">No students found.</div>`;
         return;
       }
 
       list.innerHTML = students.map(s => `
-        <div class="student-card ${s.id === selectedStudentId ? 'active' : ''}" onclick="selectStudent('${s.id}')">
+        <div class="student-card ${String(s.id) === String(selectedStudentId) ? 'active' : ''}" onclick="selectStudent('${s.id}')">
           <div class="student-top">
             <strong>${escapeHtml(s.name || 'Unnamed student')}</strong>
             ${s.archived ? '<span class="badge">Archived</span>' : ''}
@@ -715,10 +714,9 @@
     }
 
     function selectStudent(id){
-      selectedStudentId = id;
+      selectedStudentId = String(id);
       render();
     }
-
     function renderHeader(){
       const s = getSelectedStudent();
       if(!s) return;
