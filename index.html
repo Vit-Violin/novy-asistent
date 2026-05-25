@@ -780,6 +780,17 @@ function persist(){
   resetEventFormUI();
   resetRepertoireFormUI();
 }
+    function resetAllEditStates(){
+  editingInstrumentHistoryId = null;
+  editingLessonId = null;
+  editingEventId = null;
+  editingRepertoireId = null;
+
+  resetInstrumentHistoryFormUI();
+  resetLessonFormUI();
+  resetEventFormUI();
+  resetRepertoireFormUI();
+}
     function addInstrumentHistory(){
   const s = getSelectedStudent();
   if(!s) return;
@@ -997,7 +1008,6 @@ function resetLessonFormUI(){
   if(!title && !date) return alert("Please enter at least event title or date.");
 
   if(editingEventId){
-    // Režim úpravy: najdeme existující událost a přepíšeme ji.
     const item = s.events.find(x => String(x.id) === String(editingEventId));
 
     if(item){
@@ -1010,7 +1020,6 @@ function resetLessonFormUI(){
 
     editingEventId = null;
   } else {
-    // Režim vytvoření: přidáme novou událost.
     s.events.push({
       id: uid(),
       date,
@@ -1037,17 +1046,14 @@ function editEvent(id){
   const item = s.events.find(x => String(x.id) === String(id));
   if(!item) return;
 
-  // Zrušíme případnou editaci v ostatních sekcích.
   resetAllEditStates();
 
-  // Předvyplníme formulář hodnotami z existující události.
   document.getElementById("eventDate").value = item.date || "";
   document.getElementById("eventType").value = item.type || "Concert";
   document.getElementById("eventTitle").value = item.title || "";
   document.getElementById("eventPieces").value = item.pieces || "";
   document.getElementById("eventResult").value = item.result || "";
 
-  // Zapneme editační režim pro Events.
   editingEventId = String(id);
 
   const addBtn = document.getElementById("eventAddBtn");
