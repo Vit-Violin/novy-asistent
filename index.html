@@ -354,9 +354,18 @@
             </div>
           </div>
           <div class="row">
-            <div><textarea id="lessonFocus" placeholder="Lesson focus, notes, topics covered"></textarea></div>
-            <div><textarea id="lessonHomework" placeholder="Homework / practice goals"></textarea></div>
-          </div>
+  <div><textarea id="lessonFocus" placeholder="Focus / main topic"></textarea></div>
+  <div><textarea id="lessonTechnique" placeholder="Technique / exercises"></textarea></div>
+</div>
+
+<div class="row">
+  <div><textarea id="lessonRepertoire" placeholder="Repertoire / pieces"></textarea></div>
+  <div><textarea id="lessonNext" placeholder="Next steps / goals"></textarea></div>
+</div>
+
+<div class="row">
+  <div><textarea id="lessonHomework" placeholder="Homework / practice goals"></textarea></div>
+</div>
           <div id="lessonList"></div>
         </div>
 
@@ -736,25 +745,51 @@ function persist(){
     }
 
     function addLesson(){
-      const s = getSelectedStudent();
-      if(!s) return;
-      const date = document.getElementById("lessonDate").value;
-      const duration = document.getElementById("lessonDuration").value.trim();
-      const attendance = document.getElementById("lessonAttendance").value;
-      const focus = document.getElementById("lessonFocus").value.trim();
-      const homework = document.getElementById("lessonHomework").value.trim();
-      if(!date && !focus && !homework) return alert("Please enter at least a lesson date or notes.");
-      s.lessons.push({id:uid(), date, duration, attendance, focus, homework});
-      s.lessons.sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"));
-      document.getElementById("lessonDate").value = "";
-      document.getElementById("lessonDuration").value = "";
-      document.getElementById("lessonAttendance").value = "Present";
-      document.getElementById("lessonFocus").value = "";
-      document.getElementById("lessonHomework").value = "";
-      persist();
-      renderLessons();
-    }
+  const s = getSelectedStudent();
+  if(!s) return;
 
+  const date = document.getElementById("lessonDate").value;
+  const duration = document.getElementById("lessonDuration").value.trim();
+  const attendance = document.getElementById("lessonAttendance").value;
+
+  const focus = document.getElementById("lessonFocus").value.trim();
+  const technique = document.getElementById("lessonTechnique").value.trim();
+  const repertoire = document.getElementById("lessonRepertoire").value.trim();
+  const next = document.getElementById("lessonNext").value.trim();
+  const homework = document.getElementById("lessonHomework").value.trim();
+
+  if(!date && !focus && !technique && !repertoire && !next && !homework) {
+    return alert("Please enter at least a lesson date or lesson content.");
+  }
+
+  s.lessons.push({
+    id: uid(),
+    date,
+    duration,
+    attendance,
+    focus,
+    technique,
+    repertoire,
+    next,
+    homework
+  });
+
+  s.lessons.sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"));
+
+  document.getElementById("lessonDate").value = "";
+  document.getElementById("lessonDuration").value = "";
+  document.getElementById("lessonAttendance").value = "Present";
+
+  document.getElementById("lessonFocus").value = "";
+  document.getElementById("lessonTechnique").value = "";
+  document.getElementById("lessonRepertoire").value = "";
+  document.getElementById("lessonNext").value = "";
+  document.getElementById("lessonHomework").value = "";
+
+  persist();
+  renderLessons();
+}
+    
     function addEvent(){
       const s = getSelectedStudent();
       if(!s) return;
