@@ -822,29 +822,35 @@ function persist(){
     }
 
     function renderLessons(){
-      const s = getSelectedStudent();
-      const box = document.getElementById("lessonList");
-      if(!s || !s.lessons.length){
-        box.innerHTML = `<div class="empty">No lessons yet.</div>`;
-        return;
-      }
-      box.innerHTML = s.lessons
-        .sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"))
-        .map(item => `
-          <div class="item">
-            <div class="item-header">
-              <div>
-                <strong>${escapeHtml(item.date || 'No date')}</strong>
-                <div class="tiny">${escapeHtml(item.duration || '')} ${item.attendance ? '• ' + escapeHtml(item.attendance) : ''}</div>
-              </div>
-              <button class="danger" onclick="deleteItem('lessons','${item.id}')">Delete</button>
-            </div>
-            <div><strong>Focus:</strong> ${escapeHtml(item.focus || '-')}</div>
-            <div><strong>Homework:</strong> ${escapeHtml(item.homework || '-')}</div>
-          </div>
-        `).join("");
-    }
+  const s = getSelectedStudent();
+  const box = document.getElementById("lessonList");
 
+  if(!s || !s.lessons.length){
+    box.innerHTML = `<div class="empty">No lessons yet.</div>`;
+    return;
+  }
+
+  box.innerHTML = s.lessons
+    .sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"))
+    .map(item => `
+      <div class="item">
+        <div class="item-header">
+          <div>
+            <strong>${escapeHtml(item.date || 'No date')}</strong>
+            <div class="tiny">${escapeHtml(item.duration || '')} ${item.attendance ? '• ' + escapeHtml(item.attendance) : ''}</div>
+          </div>
+          <button class="danger" onclick="deleteItem('lessons','${item.id}')">Delete</button>
+        </div>
+
+        ${item.focus ? `<div><strong>Focus:</strong> ${escapeHtml(item.focus)}</div>` : ''}
+        ${item.technique ? `<div><strong>Technique:</strong> ${escapeHtml(item.technique)}</div>` : ''}
+        ${item.repertoire ? `<div><strong>Repertoire:</strong> ${escapeHtml(item.repertoire)}</div>` : ''}
+        ${item.next ? `<div><strong>Next:</strong> ${escapeHtml(item.next)}</div>` : ''}
+        ${item.homework ? `<div><strong>Homework:</strong> ${escapeHtml(item.homework)}</div>` : ''}
+      </div>
+    `).join("");
+}
+    
     function renderEvents(){
       const s = getSelectedStudent();
       const box = document.getElementById("eventList");
