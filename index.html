@@ -447,23 +447,92 @@
 
   <script>
     const STORAGE_KEY = "studio-assistant-data-v1";
-    let data = loadData();
-    let selectedStudentId = data.students[0]?.id || null;
-    let archiveFilter = "active";
 
-    function loadData(){
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if(raw){
-        try { return JSON.parse(raw); }
-        catch(e){}
+// Načteme data z localStorage nebo vytvoříme prázdnou strukturu.
+let data = loadData();
+
+// Migrace starších JSON souborů.
+// Doplní chybějící ratings a recommendations.
+data = migrateData(data);
+
+// Uložíme zpět opravenou strukturu.
+persist();
+
+// selectedStudentId ukládáme jako text,
+// protože starší JSON může mít id jako číslo.
+let selectedStudentId = data.students[0]?.id != null ? String(data.students[0].id) : null;
+
+let archiveFilter = "active";
+
+function loadData(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(raw){
+    try { return JSON.parse(raw); }
+    catch(e){}
+  }
+  return { students: [] };
+}
+
+function migrateData(appData) {
+  // Ochrana: pokud data nejsou objekt, vytvoříme základní strukturu.
+  if (!appData || typeof appData !== "object") {
+    appData = { students: [] };
+  }
+
+  // Ochrana: pokud students neexistuje nebo není pole, opravíme to.
+  if (!Array.isArray(appData.students)) {
+    appData.students = [];
+  }
+
+  appData.students = appData.students.map(student => {
+    // Ochrana: pokud je student poškozený nebo prázdný.
+    if (!student || typeof student !== "object") {
+      student = {};
+    }
+
+    return {
+      // Zachováme původní id, ale pokud chybí, vytvoříme nové.
+      id: student.id ?? uid(),
+
+      // Základní profilová pole.
+      archived: student.archived ?? false,
+      name: student.name || "Unnamed Student",
+      dob: student.dob || "",
+      instrument: student.instrument || "",
+      level: student.level || "",
+      contact: student.contact || "",
+      generalNotes: student.generalNotes || "",
+
+      // Seznamy musí být vždy pole.
+      instrumentHistory: Array.isArray(student.instrumentHistory) ? student.instrumentHistory : [],
+      lessons: Array.isArray(student.lessons) ? student.lessons : [],
+      events: Array.isArray(student.events) ? student.events : [],
+      repertoire: Array.isArray(student.repertoire) ? student.repertoire : [],
+
+      // Starší JSON toto pole nemusí mít.
+      ratings: {
+        intonation: student.ratings?.intonation || "",
+        rhythm: student.ratings?.rhythm || "",
+        posture: student.ratings?.posture || "",
+        bow: student.ratings?.bow || "",
+        tone: student.ratings?.tone || ""
+      },
+
+      // Starší JSON toto pole nemusí mít.
+      recommendations: {
+        priorities: student.recommendations?.priorities || "",
+        futureMaterials: student.recommendations?.futureMaterials || ""
       }
-      return { students: [] };
-    }
+    };
+  });
 
-    function persist(){
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    }
+  return appData;
+}
 
+function persist(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+    
     function uid(){
       return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
     }
