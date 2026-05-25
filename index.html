@@ -232,8 +232,9 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-</head><body>
-  <button onclick="exportReportPdf()">Export PDF</button>
+</head>
+  <body>
+
   <header>
     <div class="topbar">
       <div>
@@ -242,11 +243,12 @@
         <div class="live-url">Live page: https://vit-violin.github.io/novy-asistent/</div>
       </div>
       <div class="actions">
-        <button onclick="addStudent()">Add Student</button>
-        <button class="secondary" onclick="exportData()">Export JSON</button>
-        <label class="file-label secondary" for="importFile">Import JSON</label>
-        <input id="importFile" type="file" accept=".json" onchange="importData(event)" />
-      </div>
+  <button onclick="addStudent()">Add Student</button>
+  <button class="secondary" onclick="exportData()">Export JSON</button>
+  <button class="secondary" onclick="exportReportPdf()">Export PDF</button>
+  <label class="file-label secondary" for="importFile">Import JSON</label>
+  <input id="importFile" type="file" accept=".json" onchange="importData(event)" />
+</div>
     </div>
   </header>
 
@@ -863,20 +865,56 @@
 
     render();
   </script>
-<script>  
-  async function exportReportPdf(){
-    
-    const { jsPDF } = window.jspdf;
-        const report = document.getElementById('reportContent');
-        if (!report) return;
-        const canvas = await html2canvas(report, { scale: 2, useCORS: true });
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = 210;
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-   pdf.output('dataurlnewwindow');
+<script>
+  async function exportReportPdf() {
+    try {
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert("jsPDF není načtený.");
+        return;
+      }
+
+      if (!window.html2canvas) {
+        alert("html2canvas není načtený.");
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const report = document.getElementById("studentView");
+
+      if (!report) {
+        alert("Element #studentView nebyl nalezen.");
+        return;
+      }
+
+      if (report.offsetWidth === 0 || report.offsetHeight === 0) {
+        alert("Nejdřív vyberte studenta. Exportovaný obsah je skrytý nebo prázdný.");
+        return;
+      }
+
+      const canvas = await html2canvas(report, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff"
+      });
+
+      if (!canvas.width || !canvas.height) {
+        alert("Canvas je prázdný. PDF nelze vytvořit.");
+        return;
+      }
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+
+      const pdfWidth = 210;
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save("studio-report.pdf");
+    } catch (error) {
+      console.error("PDF export error:", error);
+      alert("Export PDF selhal. Podívejte se do konzole Safari.");
+    }
   }
-  </script>
-  </body>
+</script>
+</body>
 </html>
