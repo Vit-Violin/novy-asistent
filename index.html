@@ -490,11 +490,102 @@ function migrateData(appData) {
       student = {};
     }
 
-    return {
-      // Zachováme původní id, ale pokud chybí, vytvoříme nové.
-      id: student.id ?? uid(),
+    // Migrace lekcí ze starších JSON souborů.
+    const lessons = (Array.isArray(student.lessons) ? student.lessons : []).map(lesson => {
+      if (!lesson || typeof lesson !== "object") {
+        return null;
+      }
 
-      // Základní profilová pole.
+      return {
+        // Číselná id ze starších JSON souborů převedeme na text.
+        id: lesson.id != null ? String(lesson.id) : uid(),
+
+        date: lesson.date || "",
+        duration: lesson.duration || "",
+        attendance: lesson.attendance || "Present",
+
+        // Starší i novější pole lekce zachováme jako samostatná pole.
+        focus: lesson.focus || "",
+        technique: lesson.technique || "",
+        repertoire: lesson.repertoire || "",
+        next: lesson.next || "",
+        homework: lesson.homework || ""
+      };
+    }).filter(Boolean);
+
+    // Migrace repertoáru.
+    const repertoire = (Array.isArray(student.repertoire) ? student.repertoire : []).map(item => {
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+
+      // Starý formát měl často:
+      // title = název skladby
+      // type = typ nebo kategorie
+      // note = poznámka
+      //
+      // Nový formát používá:
+      // piece = název skladby
+      // composer = skladatel nebo doplňující údaj
+      // notes = poznámky
+      const piece = item.piece || item.title || "";
+      const composer = item.composer || item.type || "";
+      const notes = item.notes || item.note || "";
+
+      return {
+        // Číselná id ze starších JSON souborů převedeme na text.
+        id: item.id != null ? String(item.id) : uid(),
+
+        date: item.date || "",
+        status: item.status || "",
+
+        // Nová pole používaná aktuální aplikací.
+        piece: piece,
+        composer: composer,
+        notes: notes,
+
+        // Legacy pole také zachováme, aby nedošlo ke ztrátě dat.
+        title: item.title || piece,
+        type: item.type || composer,
+        note: item.note || notes
+      };
+    }).filter(Boolean);
+
+    // Migrace eventů.
+    const events = (Array.isArray(student.events) ? student.events : []).map(eventItem => {
+      if (!eventItem || typeof eventItem !== "object") {
+        return null;
+      }
+
+      return {
+        id: eventItem.id != null ? String(eventItem.id) : uid(),
+        date: eventItem.date || "",
+        type: eventItem.type || "",
+        title: eventItem.title || "",
+        pieces: eventItem.pieces || "",
+        result: eventItem.result || ""
+      };
+    }).filter(Boolean);
+
+    // Migrace historie nástroje.
+    const instrumentHistory = (Array.isArray(student.instrumentHistory) ? student.instrumentHistory : []).map(entry => {
+      if (!entry || typeof entry !== "object") {
+        return null;
+      }
+
+      return {
+        id: entry.id != null ? String(entry.id) : uid(),
+        date: entry.date || "",
+        instrument: entry.instrument || "",
+        notes: entry.notes || entry.note || ""
+      };
+    }).filter(Boolean);
+
+    return {
+      // Číselná id studentů převedeme na text,
+      // aby fungovalo přepínání studentů.
+      id: student.id != null ? String(student.id) : uid(),
+
       archived: student.archived ?? false,
       name: student.name || "Unnamed Student",
       dob: student.dob || "",
@@ -503,13 +594,13 @@ function migrateData(appData) {
       contact: student.contact || "",
       generalNotes: student.generalNotes || "",
 
-      // Seznamy musí být vždy pole.
-      instrumentHistory: Array.isArray(student.instrumentHistory) ? student.instrumentHistory : [],
-      lessons: Array.isArray(student.lessons) ? student.lessons : [],
-      events: Array.isArray(student.events) ? student.events : [],
-      repertoire: Array.isArray(student.repertoire) ? student.repertoire : [],
+      instrumentHistory: instrumentHistory,
+      lessons: lessons,
+      events: events,
+      repertoire: repertoire,
 
-      // Starší JSON toto pole nemusí mít.
+      // Starší JSON toto pole neměl.
+      // Bez něj by saveRatings() mohlo spadnout.
       ratings: {
         intonation: student.ratings?.intonation || "",
         rhythm: student.ratings?.rhythm || "",
@@ -518,7 +609,8 @@ function migrateData(appData) {
         tone: student.ratings?.tone || ""
       },
 
-      // Starší JSON toto pole nemusí mít.
+      // Starší JSON toto pole neměl.
+      // Bez něj by saveRecommendations() mohlo spadnout.
       recommendations: {
         priorities: student.recommendations?.priorities || "",
         futureMaterials: student.recommendations?.futureMaterials || ""
@@ -528,7 +620,7 @@ function migrateData(appData) {
 
   return appData;
 }
-
+    
 function persist(){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
@@ -726,30 +818,41 @@ function persist(){
 
   URL.revokeObjectURL(url);
 }
-    function importData(event){
-      const file = event.target.files[0];
-      if(!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e){
-        try{
-          const imported = JSON.parse(e.target.result);
-          if(!imported.students || !Array.isArray(imported.students)){
-            alert("Invalid JSON structure.");
-            return;
-          }
-          data = imported;
-          selectedStudentId = data.students[0]?.id || null;
-          persist();
-          render();
-          alert("Import successful.");
-        }catch(err){
-          alert("Import failed. Please use a valid JSON export file.");
-        }
-      };
-      reader.readAsText(file);
-      event.target.value = "";
-    }
+   function importData(event){
+  const file = event.target.files[0];
+  if(!file) return;
 
+  const reader = new FileReader();
+
+  reader.onload = function(e){
+    try{
+      const imported = JSON.parse(e.target.result);
+
+      if(!imported || !Array.isArray(imported.students)){
+        alert("Invalid JSON structure.");
+        return;
+      }
+
+      // Importovaný JSON nejdřív projde migrací,
+      // aby staré zálohy měly stejnou strukturu jako aktuální aplikace.
+      data = migrateData(imported);
+
+      // selectedStudentId držíme jako text,
+      // protože starší JSON může mít číselná id.
+      selectedStudentId = data.students[0]?.id != null ? String(data.students[0].id) : null;
+
+      persist();
+      render();
+      alert("Import successful.");
+    }catch(err){
+      console.error("Import failed:", err);
+      alert("Import failed. Please use a valid JSON export file.");
+    }
+  };
+
+  reader.readAsText(file);
+  event.target.value = "";
+}
     function renderStudentsList(){
       const list = document.getElementById("studentList");
       const query = document.getElementById("searchInput").value.toLowerCase().trim();
