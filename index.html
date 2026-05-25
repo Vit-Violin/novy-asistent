@@ -339,7 +339,8 @@
         <div class="section">
           <div class="item-header">
             <h3>Lesson Log</h3>
-            <button onclick="addLesson()">Add Lesson</button>
+            <button id="lessonAddBtn" onclick="addLesson()">Add Lesson</button>
+<button id="lessonCancelBtn" onclick="cancelEditLesson()" style="display:none">Cancel</button>
           </div>
           <div class="row-3">
             <div><input id="lessonDate" type="date" /></div>
@@ -397,7 +398,8 @@
         <div class="section">
   <div class="item-header">
     <h3>Repertoire History</h3>
-    <button onclick="addRepertoire()">Add Piece</button>
+    <button id="repAddBtn" onclick="addRepertoire()">Add Piece</button>
+<button id="repCancelBtn" onclick="cancelEditRepertoire()" style="display:none">Cancel</button>
   </div>
 
   <!-- Nový formulář používá pole kompatibilní se starším JSON:
@@ -479,8 +481,12 @@ persist();
 let selectedStudentId = data.students[0]?.id != null ? String(data.students[0].id) : null;
 
 let archiveFilter = "active";
-
-function loadData(){
+// Pomocné proměnné pro inline editaci.
+// null znamená, že formulář vytváří nový záznam.
+// id znamená, že formulář upravuje existující záznam.
+let editingLessonId = null;
+let editingRepertoireId = null;
+    function loadData(){
   const raw = localStorage.getItem(STORAGE_KEY);
   if(raw){
     try { return JSON.parse(raw); }
@@ -769,32 +775,101 @@ function persist(){
     return alert("Please enter at least a lesson date or lesson content.");
   }
 
-  s.lessons.push({
-    id: uid(),
-    date,
-    duration,
-    attendance,
-    focus,
-    technique,
-    repertoire,
-    next,
-    homework
-  });
+  if(editingLessonId){
+    // Režim úpravy: přepíšeme existující lekci místo vytvoření nové.
+    const lesson = s.lessons.find(l => String(l.id) === String(editingLessonId));
+
+    if(lesson){
+      lesson.date = date;
+      lesson.duration = duration;
+      lesson.attendance = attendance;
+      lesson.focus = focus;
+      lesson.technique = technique;
+      lesson.repertoire = repertoire;
+      lesson.next = next;
+      lesson.homework = homework;
+    }
+
+    editingLessonId = null;
+  } else {
+    // Režim vytvoření: přidáme novou lekci.
+    s.lessons.push({
+      id: uid(),
+      date,
+      duration,
+      attendance,
+      focus,
+      technique,
+      repertoire,
+      next,
+      homework
+    });
+  }
 
   s.lessons.sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"));
 
+  clearLessonForm();
+  resetLessonFormUI();
+
+  persist();
+  renderLessons();
+}
+
+function editLesson(id){
+  const s = getSelectedStudent();
+  if(!s) return;
+
+  const lesson = s.lessons.find(l => String(l.id) === String(id));
+  if(!lesson) return;
+
+  // Předvyplníme formulář hodnotami z existující lekce.
+  document.getElementById("lessonDate").value = lesson.date || "";
+  document.getElementById("lessonDuration").value = lesson.duration || "";
+  document.getElementById("lessonAttendance").value = lesson.attendance || "Present";
+  document.getElementById("lessonFocus").value = lesson.focus || "";
+  document.getElementById("lessonTechnique").value = lesson.technique || "";
+  document.getElementById("lessonRepertoire").value = lesson.repertoire || "";
+  document.getElementById("lessonNext").value = lesson.next || "";
+  document.getElementById("lessonHomework").value = lesson.homework || "";
+
+  // Zapneme editační režim.
+  editingLessonId = String(id);
+
+  resetRepertoireFormUI();
+  editingRepertoireId = null;
+
+  const addBtn = document.getElementById("lessonAddBtn");
+  if(addBtn) addBtn.textContent = "Save Lesson";
+
+  const cancelBtn = document.getElementById("lessonCancelBtn");
+  if(cancelBtn) cancelBtn.style.display = "";
+
+  document.getElementById("lessonDate").scrollIntoView({behavior:"smooth", block:"center"});
+}
+
+function cancelEditLesson(){
+  editingLessonId = null;
+  clearLessonForm();
+  resetLessonFormUI();
+}
+
+function clearLessonForm(){
   document.getElementById("lessonDate").value = "";
   document.getElementById("lessonDuration").value = "";
   document.getElementById("lessonAttendance").value = "Present";
-
   document.getElementById("lessonFocus").value = "";
   document.getElementById("lessonTechnique").value = "";
   document.getElementById("lessonRepertoire").value = "";
   document.getElementById("lessonNext").value = "";
   document.getElementById("lessonHomework").value = "";
+}
 
-  persist();
-  renderLessons();
+function resetLessonFormUI(){
+  const addBtn = document.getElementById("lessonAddBtn");
+  if(addBtn) addBtn.textContent = "Add Lesson";
+
+  const cancelBtn = document.getElementById("lessonCancelBtn");
+  if(cancelBtn) cancelBtn.style.display = "none";
 }
     
     function addEvent(){
@@ -828,38 +903,103 @@ function persist(){
   const status = document.getElementById("repStatus").value.trim();
   const note = document.getElementById("repNote").value.trim();
 
-  // Stačí zadat alespoň název, skladatele, typ nebo poznámku.
   if(!title && !composer && !type && !status && !note) {
     return alert("Please enter at least a title, composer, type, status, or note.");
   }
 
-  s.repertoire.push({
-    id: uid(),
-    date,
+  if(editingRepertoireId){
+    // Režim úpravy: přepíšeme existující položku.
+    const item = s.repertoire.find(r => String(r.id) === String(editingRepertoireId));
 
-    // Hlavní struktura kompatibilní se starším JSON.
-    title,
-    composer,
-    type,
-    status,
-    note,
+    if(item){
+      item.date = date;
+      item.title = title;
+      item.composer = composer;
+      item.type = type;
+      item.status = status;
+      item.note = note;
 
-    // Alias pro novější části aplikace, které dříve používaly piece/notes.
-    piece: title,
-    notes: note
-  });
+      // Aliasy pro kompatibilitu se starší/novější strukturou.
+      item.piece = title;
+      item.notes = note;
+    }
+
+    editingRepertoireId = null;
+  } else {
+    // Režim vytvoření: přidáme novou položku.
+    s.repertoire.push({
+      id: uid(),
+      date,
+      title,
+      composer,
+      type,
+      status,
+      note,
+      piece: title,
+      notes: note
+    });
+  }
 
   s.repertoire.sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"));
 
+  clearRepertoireForm();
+  resetRepertoireFormUI();
+
+  persist();
+  renderRepertoire();
+}
+
+function editRepertoire(id){
+  const s = getSelectedStudent();
+  if(!s) return;
+
+  const item = s.repertoire.find(r => String(r.id) === String(id));
+  if(!item) return;
+
+  // Předvyplníme formulář hodnotami z existující položky.
+  document.getElementById("repDate").value = item.date || "";
+  document.getElementById("repTitle").value = item.title || item.piece || "";
+  document.getElementById("repComposer").value = item.composer || "";
+  document.getElementById("repType").value = item.type || "";
+  document.getElementById("repStatus").value = item.status || "";
+  document.getElementById("repNote").value = item.note || item.notes || "";
+
+  // Zapneme editační režim.
+  editingRepertoireId = String(id);
+
+  resetLessonFormUI();
+  editingLessonId = null;
+
+  const addBtn = document.getElementById("repAddBtn");
+  if(addBtn) addBtn.textContent = "Save Piece";
+
+  const cancelBtn = document.getElementById("repCancelBtn");
+  if(cancelBtn) cancelBtn.style.display = "";
+
+  document.getElementById("repDate").scrollIntoView({behavior:"smooth", block:"center"});
+}
+
+function cancelEditRepertoire(){
+  editingRepertoireId = null;
+  clearRepertoireForm();
+  resetRepertoireFormUI();
+}
+
+function clearRepertoireForm(){
   document.getElementById("repDate").value = "";
   document.getElementById("repTitle").value = "";
   document.getElementById("repComposer").value = "";
   document.getElementById("repType").value = "";
   document.getElementById("repStatus").value = "";
   document.getElementById("repNote").value = "";
+}
 
-  persist();
-  renderRepertoire();
+function resetRepertoireFormUI(){
+  const addBtn = document.getElementById("repAddBtn");
+  if(addBtn) addBtn.textContent = "Add Piece";
+
+  const cancelBtn = document.getElementById("repCancelBtn");
+  if(cancelBtn) cancelBtn.style.display = "none";
 }
     
     function deleteItem(collectionName, id){
@@ -953,9 +1093,18 @@ function persist(){
     }
 
     function selectStudent(id){
-      selectedStudentId = String(id);
-      render();
-    }
+  // Při přepnutí studenta zrušíme případnou rozpracovanou editaci,
+  // aby se změny omylem neukládaly do jiného studenta.
+  editingLessonId = null;
+  editingRepertoireId = null;
+
+  resetLessonFormUI();
+  resetRepertoireFormUI();
+
+  selectedStudentId = String(id);
+  render();
+}
+    
     function renderHeader(){
       const s = getSelectedStudent();
       if(!s) return;
@@ -1009,8 +1158,11 @@ function persist(){
             <strong>${escapeHtml(item.date || 'No date')}</strong>
             <div class="tiny">${escapeHtml(item.duration || '')} ${item.attendance ? '• ' + escapeHtml(item.attendance) : ''}</div>
           </div>
-          <button class="danger" onclick="deleteItem('lessons','${item.id}')">Delete</button>
-        </div>
+         <div>
+  <button onclick="editLesson('${item.id}')">Edit</button>
+  <button class="danger" onclick="deleteItem('lessons','${item.id}')">Delete</button>
+</div>
+</div>
 
         ${item.focus ? `<div><strong>Focus:</strong> ${escapeHtml(item.focus)}</div>` : ''}
         ${item.technique ? `<div><strong>Technique:</strong> ${escapeHtml(item.technique)}</div>` : ''}
@@ -1075,8 +1227,11 @@ function persist(){
                 ${escapeHtml([composer, type, item.date].filter(Boolean).join(" • "))}
               </div>
             </div>
-            <button class="danger" onclick="deleteItem('repertoire','${item.id}')">Delete</button>
-          </div>
+           <div>
+  <button onclick="editRepertoire('${item.id}')">Edit</button>
+  <button class="danger" onclick="deleteItem('repertoire','${item.id}')">Delete</button>
+</div>
+</div>
 
           ${status ? `<div><strong>Status:</strong> ${escapeHtml(status)}</div>` : ''}
           ${note ? `<div><strong>Note:</strong> ${escapeHtml(note)}</div>` : ''}
