@@ -876,29 +876,36 @@ function persist(){
     }
 
     function renderRepertoire(){
-      const s = getSelectedStudent();
-      const box = document.getElementById("repertoireList");
-      if(!s || !s.repertoire.length){
-        box.innerHTML = `<div class="empty">No repertoire yet.</div>`;
-        return;
-      }
-      box.innerHTML = s.repertoire
-        .sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"))
-        .map(item => `
-          <div class="item">
-            <div class="item-header">
-              <div>
-                <strong>${escapeHtml(item.piece || '')}</strong>
-                <div class="tiny">${escapeHtml(item.composer || '')} ${item.date ? '• ' + escapeHtml(item.date) : ''}</div>
-              </div>
-              <button class="danger" onclick="deleteItem('repertoire','${item.id}')">Delete</button>
-            </div>
-            <div><strong>Status:</strong> ${escapeHtml(item.status || '-')}</div>
-            <div><strong>Notes:</strong> ${escapeHtml(item.notes || '-')}</div>
-          </div>
-        `).join("");
-    }
+  const s = getSelectedStudent();
+  const box = document.getElementById("repertoireList");
 
+  if(!s || !s.repertoire || !s.repertoire.length){
+    box.innerHTML = `<div class="empty">No repertoire yet.</div>`;
+    return;
+  }
+
+  box.innerHTML = s.repertoire
+    .sort((a,b)=> new Date(b.date || "1900-01-01") - new Date(a.date || "1900-01-01"))
+    .map(item => `
+      <div class="item">
+        <div class="item-header">
+          <div>
+            <strong>${escapeHtml(item.piece || item.title || 'Untitled piece')}</strong>
+            <div class="tiny">
+              ${escapeHtml(item.composer || item.type || '')}
+              ${item.date ? ' • ' + escapeHtml(item.date) : ''}
+            </div>
+          </div>
+          <button class="danger" onclick="deleteItem('repertoire','${item.id}')">Delete</button>
+        </div>
+
+        ${item.status ? `<div><strong>Status:</strong> ${escapeHtml(item.status)}</div>` : ''}
+        ${item.notes ? `<div><strong>Notes:</strong> ${escapeHtml(item.notes)}</div>` : ''}
+        ${item.note ? `<div><strong>Note:</strong> ${escapeHtml(item.note)}</div>` : ''}
+      </div>
+    `).join("");
+}
+    
     function fillStudentForm(){
       const s = getSelectedStudent();
       if(!s) return;
